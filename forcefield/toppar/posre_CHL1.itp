@@ -1,0 +1,28 @@
+#ifdef STEP6_0
+#define fc_chol 1000.0
+#endif
+#ifdef STEP6_1
+#define fc_chol 1000.0
+#endif
+#ifdef STEP6_2
+#define fc_chol 400.0
+#endif
+#ifdef STEP6_3
+#define fc_chol 400.0
+#endif
+#ifdef STEP6_4
+#define fc_chol 200.0
+#endif
+#ifdef STEP6_5
+#define fc_chol 0.0
+#endif
+#ifdef STEP6_6
+#define fc_chol 0.0
+#endif
+#ifdef STEP7
+#define fc_chol 0.0
+#endif
+
+[ position_restraints ]
+; atom  type      fx      fy      fz
+    26     1  fc_chol fc_chol fc_chol
