@@ -1,0 +1,11 @@
+{
+    "percent_label": 20,
+    "box_x": 13.0,
+    "box_y": 13.0,
+    "chains_per_leaflet": 150,
+    "z_padding": 3.5,
+    "water_spacing": 0.33,
+    "salt_conc": 0.150,
+    "additive_type": "cholesterol",
+    "polymer_type": "pb22peo14"
+}

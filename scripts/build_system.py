@@ -55,6 +55,30 @@ else:
             
     # Assume the topology file matches the residue name
     additive_itp = f"{additive_resname}.itp"
+    
+    # Antechamber feature: if additive itp is not in toppar, build it!
+    additive_itp_path = f"forcefield/toppar/{additive_itp}"
+    if not os.path.exists(additive_itp_path) and additive_type != "none":
+        print(f"Topology {additive_itp} not found in toppar/! Attempting to auto-generate using Antechamber/ACPYPE...")
+        # Convert gro to pdb for antechamber using obabel or gmx trjconv
+        # Here we just write the system call logic
+        os.makedirs("scratch_ff", exist_ok=True)
+        ret = os.system(f"gmx_mpi editconf -f {additive_gro} -o scratch_ff/temp.pdb")
+        if ret == 0:
+            print("Running Antechamber...")
+            ret2 = os.system(f"antechamber -i scratch_ff/temp.pdb -fi pdb -o scratch_ff/temp.mol2 -fo mol2 -c bcc -s 2")
+            if ret2 == 0:
+                print("Running ACPYPE to generate GROMACS topology...")
+                os.system(f"acpype -i scratch_ff/temp.mol2 -o gmx -b {additive_resname}")
+                # Move generated itp
+                os.system(f"cp {additive_resname}.GMX/{additive_resname}_GMX.itp {additive_itp_path}")
+                print(f"Successfully generated {additive_itp}!")
+            else:
+                print("Antechamber failed. Ensure AmberTools is installed.")
+                sys.exit(1)
+        else:
+            print("Failed to convert .gro to .pdb for Antechamber.")
+            sys.exit(1)
 
 if additive_type == "none" or percent_label == 0:
     n_additive_total = 0
@@ -67,17 +91,33 @@ n_additive_per_leaflet = n_additive_total // 2
 
 polymer_type = config.get("polymer_type", "pb22peo14").lower()
 polymer_itp_path = f"forcefield/toppar/{polymer_type}.itp"
+
+import re
+# Auto-generate custom polymer topology if missing
 if not os.path.exists(polymer_itp_path):
-    print(f"Error: Polymer topology {polymer_itp_path} not found.")
-    sys.exit(1)
+    print(f"Custom topology {polymer_itp_path} not found. Auto-generating using build_top.py...")
+    match = re.match(r"pb(\d+)peo(\d+)", polymer_type)
+    if match:
+        target_pb = int(match.group(1))
+        target_peo = int(match.group(2))
+        print(f"Detected target: PB={target_pb}, PEO={target_peo}")
+        
+        ret = os.system(f"python3 scripts/build_top.py {target_pb} {target_peo} {polymer_itp_path}")
+        if ret != 0:
+            print("Error: Topology auto-generation failed.")
+            sys.exit(1)
+    else:
+        print(f"Error: Polymer topology {polymer_itp_path} not found and naming format not recognized.")
+        sys.exit(1)
 additive_z_var = config.get("additive_z_variance_nm", 1.0)
 
 n_additive_per_leaflet = n_additive_total // 2
 additive_z_offset = config.get("additive_z_offset", 0.0)
 additive_z_random = config.get("additive_z_random", 1.0)
 
-work_dir = str(percent_label)
-os.makedirs(work_dir, exist_ok=True)
+work_dir = f"output_systems/{percent_label}_{polymer_type}"
+if not os.path.exists(work_dir):
+    os.makedirs(work_dir, exist_ok=True)
 
 import shutil
 print(f"Creating output directory {work_dir}/ and copying forcefield files...")
@@ -344,7 +384,8 @@ if n_additive_total > 0:
         tree = cKDTree(bilayer_arr)
         dists, _ = tree.query(mig, k=1)
         
-        if np.min(dists) > 0.15:
+        # 0.25 nm prevents LJ potentials from reaching floating point infinity
+        if np.min(dists) > 0.25:
             bilayer_arr = np.vstack([bilayer_arr, mig])
             for i in range(len(mig)):
                 bilayer_resnames.append(mig_atoms[i][0])

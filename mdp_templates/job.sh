@@ -37,19 +37,12 @@ conda activate /ptmp/naskars/software/openmm
 
 echo "Starting Equilibration Protocol at $(date)"
 
-## Minimization (Steepest Descent)
-#echo "==> Running Step 6.0: Minimization (Steep)"
-gmx_mpi grompp -f step6.0_minimization.mdp -o step6.0 -c system_300.gro -r system_300.gro -p system_300.top -n index.ndx -maxwarn 20
-srun gmx_mpi mdrun -ntomp 24 -deffnm step6.0 -pin on
-
-# Minimization (Conjugate Gradient)
-echo "==> Running Step 6.0b: Minimization (CG)"
-gmx_mpi grompp -f step6.0b_minimization_cg.mdp -o step6.0b -c step6.0.gro -r system_300.gro -p system_300.top -n index.ndx -maxwarn 20
-srun gmx_mpi mdrun -ntomp 24 -deffnm step6.0b -pin on
+# Minimization is now handled automatically by builder.sh!
+# The output is perfectly relaxed and saved directly as system_300.gro.
 
 # 6 Equilibration steps WITH restraints
 echo "==> Running 6 Equilibration steps WITH restraints"
-gmx_mpi grompp -f step6.1_equilibration.mdp -o step6.1 -c step6.0b.gro -r system_300.gro -p system_300.top -n index.ndx -maxwarn 20
+gmx_mpi grompp -f step6.1_equilibration.mdp -o step6.1 -c system_300.gro -r system_300.gro -p system_300.top -n index.ndx -maxwarn 20
 srun gmx_mpi mdrun -ntomp 24 -deffnm step6.1 -pin on
 
 gmx_mpi grompp -f step6.2_equilibration.mdp -o step6.2 -c step6.1.gro -r system_300.gro -p system_300.top -n index.ndx -maxwarn 20
